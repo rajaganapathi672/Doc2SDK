@@ -22,12 +22,14 @@ const Dashboard = () => {
 
             const totalProjects = projects.length;
             const totalEndpoints = projects.reduce((acc: number, p: any) => acc + (p.spec?.endpoints?.length || 0), 0);
+            const savedCalls = localStorage.getItem('ag_api_calls');
+            const totalCalls = savedCalls ? parseInt(savedCalls, 10) : 0;
 
             setStats([
                 { label: 'Active Projects', value: totalProjects.toString(), icon: Box, color: 'var(--primary-500)' },
                 { label: 'Generated SDKs', value: totalProjects.toString(), icon: Code, color: 'var(--success)' },
                 { label: 'Total Endpoints', value: totalEndpoints.toString(), icon: Shield, color: 'var(--accent-purple)' },
-                { label: 'API Calls', value: '0', icon: Zap, color: 'var(--warning)' },
+                { label: 'API Calls', value: totalCalls.toString(), icon: Zap, color: 'var(--warning)' },
             ]);
         } catch (error) {
             console.error("Dashboard compute error:", error);

@@ -11,6 +11,10 @@ export default function Workspace() {
         const saved = localStorage.getItem('ag_projects');
         return saved ? JSON.parse(saved) : [];
     });
+    const [apiCalls, setApiCalls] = useState<number>(() => {
+        const saved = localStorage.getItem('ag_api_calls');
+        return saved ? parseInt(saved, 10) : 0;
+    });
     const [result, setResult] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'endpoints' | 'playground' | 'results'>('overview');
     const [projectName, setProjectName] = useState('');
@@ -130,6 +134,11 @@ export default function Workspace() {
                 json_body: pBody ? JSON.parse(pBody) : undefined
             });
             setPResponse(response);
+
+            // Track successful API call
+            const newCount = apiCalls + 1;
+            setApiCalls(newCount);
+            localStorage.setItem('ag_api_calls', newCount.toString());
         } catch (error: any) {
             setPResponse({ error: error.message || "Execution failed" });
         } finally {
@@ -181,7 +190,7 @@ export default function Workspace() {
                                 { label: 'Active Projects', value: projects.length.toString(), icon: Box, color: '#3b82f6' },
                                 { label: 'Generated SDKs', value: projects.length.toString(), icon: FileCode, color: '#10b981' },
                                 { label: 'Total Endpoints', value: result ? result.spec.endpoints.length : '0', icon: Globe, color: '#8b5cf6' },
-                                { label: 'API Calls', value: result ? '0' : '-', icon: Activity, color: '#f59e0b' }
+                                { label: 'API Calls', value: apiCalls.toString(), icon: Activity, color: '#f59e0b' }
                             ].map((stat, i) => (
                                 <div key={i} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
