@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Code, Globe, Terminal, Cpu, Zap, Copy, Check, Box, FileCode, Activity, Share2, Download, X, Pencil, Trash2 } from 'lucide-react';
 import { mvpApi } from '../api';

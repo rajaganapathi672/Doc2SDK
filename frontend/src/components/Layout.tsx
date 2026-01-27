@@ -1,4 +1,3 @@
-import React from 'react';
 import { Home, FolderCode, Terminal, Search, Bell, Plus, Globe } from 'lucide-react';
 
 interface LayoutProps {

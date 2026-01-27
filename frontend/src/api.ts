@@ -27,4 +27,26 @@ export const mvpApi = {
     },
 };
 
+export const projectApi = {
+    list: async () => {
+        const response = await api.get('/projects');
+        return response.data;
+    },
+    get: async (id: string) => {
+        const response = await api.get(`/projects/${id}`);
+        return response.data;
+    },
+    create: async (name: string, url: string, type: string) => {
+        const response = await api.post('/projects', { name, source_url: url, source_type: type });
+        return response.data;
+    }
+};
+
+export const playgroundApi = {
+    test: async (projectId: string, path: string, params: any) => {
+        const response = await api.post(`/playground/test`, { project_id: projectId, path, params });
+        return response.data;
+    }
+};
+
 export default api;
