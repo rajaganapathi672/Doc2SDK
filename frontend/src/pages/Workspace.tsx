@@ -15,6 +15,10 @@ export default function Workspace() {
     const [activeTab, setActiveTab] = useState<'overview' | 'endpoints' | 'playground' | 'results'>('overview');
     const [projectName, setProjectName] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editUrl, setEditUrl] = useState('');
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [copied, setCopied] = useState(false);
 
     // Playground state
@@ -71,23 +75,26 @@ export default function Workspace() {
         e.stopPropagation();
         const project = projects.find(p => p.id === projectId);
         if (!project) return;
+        setEditingId(projectId);
+        setEditName(project.name);
+        setEditUrl(project.url);
+        setIsEditModalOpen(true);
+    };
 
-        const newName = prompt("Edit project name:", project.name);
-        if (newName === null) return; // User cancelled
-
-        const newUrl = prompt("Edit documentation URL:", project.url);
-        if (newUrl === null) return; // User cancelled
+    const handleUpdateProject = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingId) return;
 
         const updatedProjects = projects.map(p =>
-            p.id === projectId ? { ...p, name: newName.trim() || p.name, url: newUrl.trim() || p.url } : p
+            p.id === editingId ? { ...p, name: editName.trim(), url: editUrl.trim() } : p
         );
         setProjects(updatedProjects);
         localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
 
-        // If the active result is this project, update it too
-        if (result && result.id === projectId) {
-            setResult({ ...result, name: newName.trim() || result.name });
+        if (result && result.id === editingId) {
+            setResult({ ...result, name: editName.trim(), url: editUrl.trim() });
         }
+        setIsEditModalOpen(false);
     };
 
     const handleDeleteProject = (e: React.MouseEvent, projectId: number) => {
@@ -98,7 +105,6 @@ export default function Workspace() {
         setProjects(updatedProjects);
         localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
 
-        // If the deleted project was active, clear the result
         if (result && result.id === projectId) {
             setResult(null);
         }
@@ -548,6 +554,59 @@ export default function Workspace() {
                                     </button>
                                     <button type="submit" className="btn btn-primary" disabled={loading} style={{ flex: 2, height: '52px', fontSize: '1rem', fontWeight: '700' }}>
                                         {loading ? <Cpu className="animate-spin" size={20} /> : 'Generate SDK'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Project Modal */}
+            <AnimatePresence>
+                {isEditModalOpen && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)' }}>
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="glass-card" style={{ width: '100%', maxWidth: '480px', padding: '2.5rem', position: 'relative' }}>
+                            <button onClick={() => setIsEditModalOpen(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'none', border: 'none', color: '#71717a', cursor: 'pointer' }}>
+                                <X size={20} />
+                            </button>
+
+                            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Edit Project</h2>
+                            <p style={{ color: '#71717a', marginBottom: '2rem', fontSize: '0.9rem' }}>Modify the project details below.</p>
+
+                            <form onSubmit={handleUpdateProject} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: '500' }}>PROJECT NAME</label>
+                                    <div style={{ backgroundColor: '#18181b', padding: '0.25rem', borderRadius: '10px', border: '1px solid #27272a' }}>
+                                        <input
+                                            type="text"
+                                            value={editName}
+                                            onChange={(e) => setEditName(e.target.value)}
+                                            required
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: '500' }}>DOCUMENTATION URL</label>
+                                    <div style={{ backgroundColor: '#18181b', padding: '0.25rem', borderRadius: '10px', border: '1px solid #27272a' }}>
+                                        <input
+                                            type="url"
+                                            value={editUrl}
+                                            onChange={(e) => setEditUrl(e.target.value)}
+                                            required
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button type="button" onClick={() => setIsEditModalOpen(false)} className="btn btn-outline" style={{ flex: 1, height: '52px' }}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 2, height: '52px', fontSize: '1rem', fontWeight: '700' }}>
+                                        Save Changes
                                     </button>
                                 </div>
                             </form>
