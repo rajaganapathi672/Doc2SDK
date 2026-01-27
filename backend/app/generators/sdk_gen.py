@@ -60,11 +60,11 @@ class {{ name.replace(' ', '') }}Client:
         )
 
     {% for endpoint in endpoints %}
-    def {{ endpoint.summary.lower().replace(' ', '_') if endpoint.summary else endpoint.method.lower() + endpoint.path.replace('/', '_').replace('{', '').replace('}', '') }}(
+    def {{ (endpoint.summary or (endpoint.method + endpoint.path)) | sanitize }}(
         self,
         {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
-        {{ p.name }}: {{ p.type }},
+        {{ p.name | sanitize }}: {{ p.type }},
         {% endfor %}
         {% endif %}
         **kwargs
@@ -76,7 +76,7 @@ class {{ name.replace(' ', '') }}Client:
         path = f"{{ endpoint.path }}"
         {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
-        path = path.replace("{{ '{' + p.name + '}' }}", str({{ p.name }}))
+        path = path.replace("{{ '{' + p.name + '}' }}", str({{ p.name | sanitize }}))
         {% endfor %}
         {% endif %}
         
@@ -91,7 +91,7 @@ class {{ name.replace(' ', '') }}Client:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            raise {{ name.replace(' ', '') }}APIError(
+            raise {{ name | sanitize }}APIError(
                 message=str(e),
                 status_code=e.response.status_code,
                 response=e.response.json() if e.response.content else {}
@@ -117,27 +117,27 @@ TYPESCRIPT_SDK_TEMPLATE = """
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-export class {{ name.replace(' ', '') }}APIError extends Error {
+export class {{ name | sanitize }}APIError extends Error {
     constructor(
         public message: string,
         public statusCode?: number,
         public response?: any
     ) {
         super(message);
-        this.name = '{{ name.replace(' ', '') }}APIError';
+        this.name = '{{ name | sanitize }}APIError';
     }
 }
 
-export interface {{ name.replace(' ', '') }}Config {
+export interface {{ name | sanitize }}Config {
     apiKey?: string;
     baseUrl?: string;
     timeout?: number;
 }
 
-export class {{ name.replace(' ', '') }}Client {
+export class {{ name | sanitize }}Client {
     private client: AxiosInstance;
 
-    constructor(config: {{ name.replace(' ', '') }}Config = {}) {
+    constructor(config: {{ name | sanitize }}Config = {}) {
         const {
             apiKey,
             baseUrl = "{{ base_url }}",
@@ -169,10 +169,10 @@ export class {{ name.replace(' ', '') }}Client {
      * {{ endpoint.summary or endpoint.path }}
      * {{ endpoint.description }}
      */
-    async {{ (endpoint.summary.charAt(0).toLowerCase() + endpoint.summary.slice(1)).replace(' ', '') if endpoint.summary else endpoint.method.toLowerCase() + endpoint.path.replace('/', '_').replace('{', '').replace('}', '') }}(
+    async {{ (endpoint.summary or (endpoint.method + endpoint.path)) | sanitize_ts }}(
         {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
-        {{ p.name }}: any,
+        {{ p.name | sanitize }}: any,
         {% endfor %}
         {% endif %}
         data?: any,
@@ -181,7 +181,7 @@ export class {{ name.replace(' ', '') }}Client {
         let path = `{{ endpoint.path }}`;
         {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
-        path = path.replace("{{ '{' + p.name + '}' }}", String({{ p.name }}));
+        path = path.replace("{{ '{' + p.name + '}' }}", String({{ p.name | sanitize }}));
         {% endfor %}
         {% endif %}
 
@@ -195,7 +195,7 @@ export class {{ name.replace(' ', '') }}Client {
             return response.data;
         } catch (error) {
             const axiosError = error as AxiosError;
-            throw new {{ name.replace(' ', '') }}APIError(
+            throw new {{ name | sanitize }}APIError(
                 axiosError.message,
                 axiosError.response?.status,
                 axiosError.response?.data
@@ -206,9 +206,35 @@ export class {{ name.replace(' ', '') }}Client {
 }
 """
 
+def sanitize_identifier(text: str) -> str:
+    """Converts a string into a valid identifier (snake_case)."""
+    if not text:
+        return ""
+    # Remove special chars and spaces
+    import re
+    cleaned = re.sub(r'[^a-zA-Z0-9]', '_', text)
+    # Ensure it doesn't start with a number
+    if cleaned[0].isdigit():
+        cleaned = "_" + cleaned
+    # Collapse multiple underscores
+    cleaned = re.sub(r'_+', '_', cleaned)
+    # Remove leading/trailing underscores
+    cleaned = cleaned.strip('_')
+    return cleaned.lower()
+
+def sanitize_camel_case(text: str) -> str:
+    """Converts a string into a valid camelCase identifier."""
+    snake = sanitize_identifier(text)
+    parts = snake.split('_')
+    if len(parts) == 1:
+        return parts[0]
+    return parts[0] + ''.join(p.capitalize() for p in parts[1:])
+
 class CodeGenerator:
     def __init__(self):
         self.env = jinja2.Environment()
+        self.env.filters['sanitize'] = sanitize_identifier
+        self.env.filters['sanitize_ts'] = sanitize_camel_case
 
     def generate_sdk(self, spec: NormalizedAPISpec, language: str = "python") -> str:
         if language.lower() == "python":
