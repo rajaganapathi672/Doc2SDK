@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Code, Globe, Terminal, Cpu, Zap, Copy, Check, Box, FileCode, Activity, Share2, Download, X } from 'lucide-react';
+import { Code, Globe, Terminal, Cpu, Zap, Copy, Check, Box, FileCode, Activity, Share2, Download, X, Pencil } from 'lucide-react';
 import { mvpApi } from '../api';
 import Layout from '../components/Layout';
 
@@ -65,6 +65,26 @@ export default function Workspace() {
 
     const handleNewProject = () => {
         setIsCreateModalOpen(true);
+    };
+
+    const handleRenameProject = (e: React.MouseEvent, projectId: number) => {
+        e.stopPropagation();
+        const project = projects.find(p => p.id === projectId);
+        if (!project) return;
+
+        const newName = prompt("Enter new project name:", project.name);
+        if (newName && newName.trim() !== "") {
+            const updatedProjects = projects.map(p =>
+                p.id === projectId ? { ...p, name: newName.trim() } : p
+            );
+            setProjects(updatedProjects);
+            localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+
+            // If the active result is this project, update it too
+            if (result && result.id === projectId) {
+                setResult({ ...result, name: newName.trim() });
+            }
+        }
     };
 
     const handleExecute = async () => {
@@ -217,6 +237,13 @@ export default function Workspace() {
                                                     <p style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.1rem' }}>{p.name}</p>
                                                     <p style={{ fontSize: '0.7rem', color: '#71717a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.url}</p>
                                                 </div>
+                                                <button
+                                                    onClick={(e) => handleRenameProject(e, p.id)}
+                                                    style={{ background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    title="Rename Project"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
                                             </button>
                                         ))
                                     )}
