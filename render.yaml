@@ -4,7 +4,7 @@ services:
     name: doc2sdk-backend
     env: python
     buildCommand: pip install -r backend/requirements.txt && pip install gunicorn uvicorn
-    startCommand: gunicorn -w 4 -k uvicorn.workers.UvicornWorker backend.app.main:app
+    startCommand: python -m gunicorn -w 4 -k uvicorn.workers.UvicornWorker backend.app.main:app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
