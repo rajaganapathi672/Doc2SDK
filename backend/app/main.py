@@ -24,6 +24,11 @@ app.add_middleware(
 # Include routers
 app.include_router(unified.router, prefix="/api/v1")
 
+# Create database tables
+from .database import engine, Base
+from . import models
+Base.metadata.create_all(bind=engine)
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to Doc2SDK MVP API", "status": "active"}

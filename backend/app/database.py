@@ -8,7 +8,11 @@ load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./antigravity.db")
 
-if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
+# Render uses postgres:// but SQLAlchemy requires postgresql://
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
 else:
     engine = create_engine(
