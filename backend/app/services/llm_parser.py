@@ -44,6 +44,12 @@ class LLMParserService:
         if not self.model:
             self._initialize_model()
 
+        print(f"DEBUG: Parsing text (length: {len(cleaned_text)})")
+        if len(cleaned_text) < 100:
+             print(f"DEBUG: Text content: {cleaned_text}")
+        else:
+             print(f"DEBUG: Text preview: {cleaned_text[:200]}...")
+
         # 1. Spec-First Bypass: If scraper found a raw JSON spec, parse it directly
         if "RAW_SPEC_JSON:" in cleaned_text:
             try:
@@ -90,13 +96,18 @@ class LLMParserService:
 
         # 2. LLM Parsing with Gemini
         prompt = f"""
-        You are an expert API architect. Extract the API structure and return a STRICT JSON object.
-        IMPORTANT: All descriptive strings (name, summary, description, parameter names, etc.) MUST be translated to English if they are in another language.
+        You are an expert API architect. Extract the API structure from the provided text and return a STRICT JSON object.
+        
+        CRITICAL INSTRUCTIONS:
+        1. All descriptive strings (name, summary, description, parameter names, etc.) MUST be translated to English if they are in another language.
+        2. The 'endpoints' array must ONLY contain actual API endpoints (HTTP method + path).
+        3. Do NOT include documentation sections, categories, or non-functional items in the 'endpoints' array.
+        4. If the documentation lists categories (e.g., "Actions", "Queries"), treat those as context for the endpoints within them, but do not make the category itself an endpoint.
 
         API Documentation Text:
         {cleaned_text}
 
-        Return a JSON object with this structure:
+        Return a JSON object with this EXACT structure:
         {{
             "name": "API Name",
             "version": "1.0.0",
@@ -111,7 +122,7 @@ class LLMParserService:
                 {{
                     "method": "GET",
                     "path": "/resource/{{id}}",
-                    "summary": "Summary",
+                    "summary": "Summary of the endpoint",
                     "parameters": {{
                         "path": [{{ "name": "id", "type": "string", "required": true }}],
                         "query": [],
@@ -134,6 +145,17 @@ class LLMParserService:
             )
             
             spec_json = json.loads(response.text)
+            
+            # Post-processing: Filter malformed endpoints that might trigger Pydantic validation errors
+            if "endpoints" in spec_json and isinstance(spec_json["endpoints"], list):
+                valid_endpoints = []
+                for ep in spec_json["endpoints"]:
+                    if isinstance(ep, dict) and ep.get("method") and ep.get("path"):
+                        # Ensure method is uppercase
+                        ep["method"] = ep["method"].upper()
+                        valid_endpoints.append(ep)
+                spec_json["endpoints"] = valid_endpoints
+
             return {**spec_json, "source": f"gemini_{self.model_name.split('/')[-1]}", "is_mock": False}
         except Exception as e:
             print(f"DEBUG: Gemini parsing failed ({str(e)})")
