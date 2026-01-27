@@ -1,32 +1,34 @@
-<svg width="280" height="80" viewBox="0 0 280 80" fill="none"
+<svg width="320" height="120" viewBox="0 10 320 100" fill="none"
      xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="textGradient" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#6366F1"/>
-      <stop offset="100%" stop-color="#22D3EE"/>
-    </linearGradient>
-    <linearGradient id="iconGradient" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6366F1"/>
-      <stop offset="100%" stop-color="#22D3EE"/>
-    </linearGradient>
-  </defs>
-  <rect x="10" y="10" width="44" height="56" rx="8"
-        fill="#0B0F19" stroke="url(#iconGradient)" stroke-width="2"/>
-  <path d="M40 10 L54 24 L40 24 Z" fill="url(#iconGradient)"/>
-  <text x="32" y="46"
-        text-anchor="middle"
-        font-size="18"
-        font-family="JetBrains Mono, monospace"
-        fill="url(#iconGradient)">
-    {}
-  </text>
-  <line x1="68" y1="16" x2="68" y2="64"
-        stroke="#1E293B" stroke-width="2"/>
-  <text x="84" y="48"
-        font-size="30"
+
+  <!-- ICON: Stacked layers -->
+  <!-- Bottom layer -->
+  <rect x="20" y="70" width="70" height="18" rx="6"
+        fill="#1A1D23" stroke="#3A3F4B" stroke-width="2"/>
+
+  <!-- Middle layer -->
+  <rect x="15" y="50" width="70" height="18" rx="6"
+        fill="#13161C" stroke="#3A3F4B" stroke-width="2"/>
+
+  <!-- Top layer -->
+  <rect x="10" y="30" width="70" height="18" rx="6"
+        fill="#0F1115" stroke="#3A3F4B" stroke-width="2"/>
+
+  <!-- Lightning bolt -->
+  <path d="M65 32 L50 58 H63 L47 90 L77 54 H63 Z"
+        fill="#A1A1AA"/>
+
+  <!-- Divider -->
+  <line x1="110" y1="28" x2="110" y2="92"
+        stroke="#D1D5DB" stroke-width="2"/>
+
+  <!-- TEXT -->
+  <text x="130" y="72"
+        font-size="36"
         font-family="Inter, system-ui, sans-serif"
         font-weight="700"
-        fill="url(#textGradient)">
+        fill="#111827">
     Doc2SDK
   </text>
+
 </svg>

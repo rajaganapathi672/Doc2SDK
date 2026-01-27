@@ -24,6 +24,7 @@ export default function Workspace() {
     const [editUrl, setEditUrl] = useState('');
     const [editingId, setEditingId] = useState<number | null>(null);
     const [copied, setCopied] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Playground state
     const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
@@ -35,6 +36,13 @@ export default function Workspace() {
     const handleGenerate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!url) return;
+        setError(null);
+
+        // Basic URL validation
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            setError("Please enter a valid URL starting with http:// or https://");
+            return;
+        }
 
         setLoading(true);
         try {
@@ -52,12 +60,13 @@ export default function Workspace() {
             setIsCreateModalOpen(false);
             setProjectName('');
             setUrl('');
+            setError(null);
             if (data.spec.endpoints && data.spec.endpoints.length > 0) {
                 setSelectedEndpoint(data.spec.endpoints[0]);
             }
         } catch (error: any) {
             console.error("Generation failed:", error);
-            alert("Error: " + (error.response?.data?.detail || "Failed to generate SDK"));
+            setError(error.response?.data?.detail || "Failed to generate SDK. Please check the URL and try again.");
         } finally {
             setLoading(false);
         }
@@ -136,6 +145,15 @@ export default function Workspace() {
             setPResponse(response);
 
             // Track successful API call
+            const updatedResult = { ...result, apiCallCount: (result.apiCallCount || 0) + 1 };
+            setResult(updatedResult);
+
+            // Update project in list
+            const updatedProjects = projects.map(p => p.id === result.id ? updatedResult : p);
+            setProjects(updatedProjects);
+            localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+
+            // Increment global count (optional, but keeps existing state valid)
             const newCount = apiCalls + 1;
             setApiCalls(newCount);
             localStorage.setItem('ag_api_calls', newCount.toString());
@@ -181,24 +199,24 @@ export default function Workspace() {
 
                         <div style={{ marginBottom: '2rem' }}>
                             <h1 style={{ fontSize: '1.875rem', marginBottom: '0.5rem' }}>Overview</h1>
-                            <p style={{ color: '#71717a' }}>Welcome back to Doc2SDK. Here's what's happening today.</p>
+                            <p style={{ color: 'var(--gray-300)' }}>Welcome back to Doc2SDK. Here's what's happening today.</p>
                         </div>
 
                         {/* Stats Cards */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2.5rem' }}>
                             {[
-                                { label: 'Active Projects', value: projects.length.toString(), icon: Box, color: '#3b82f6' },
-                                { label: 'Generated SDKs', value: projects.length.toString(), icon: FileCode, color: '#10b981' },
-                                { label: 'Total Endpoints', value: result ? result.spec.endpoints.length : '0', icon: Globe, color: '#8b5cf6' },
-                                { label: 'API Calls', value: apiCalls.toString(), icon: Activity, color: '#f59e0b' }
+                                { label: 'Active Projects', value: projects.length.toString(), icon: Box, color: 'var(--primary-500)' },
+                                { label: 'Generated SDKs', value: projects.length.toString(), icon: FileCode, color: 'var(--success)' },
+                                { label: 'Total Endpoints', value: result ? result.spec.endpoints.length : '0', icon: Globe, color: 'var(--accent-purple)' },
+                                { label: 'API Calls', value: result ? (result.apiCallCount || 0) : '0', icon: Activity, color: 'var(--warning)' }
                             ].map((stat, i) => (
                                 <div key={i} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <stat.icon size={20} color={stat.color} />
-                                        <span style={{ fontSize: '0.75rem', color: '#10b981' }}>+0%</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--success)' }}>+0%</span>
                                     </div>
-                                    <p style={{ fontSize: '0.75rem', color: '#71717a', textTransform: 'uppercase' }}>{stat.label}</p>
-                                    <h3 style={{ fontSize: '1.5rem', fontWeight: '700' }}>{stat.value}</h3>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', textTransform: 'uppercase' }}>{stat.label}</p>
+                                    <h3 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--gray-100)' }}>{stat.value}</h3>
                                 </div>
                             ))}
                         </div>
@@ -206,27 +224,32 @@ export default function Workspace() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem' }}>
                             {/* Generate Area */}
                             <div className="glass-card" style={{ padding: '2rem' }}>
-                                <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Create New Project</h2>
+                                <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--gray-100)' }}>Create New Project</h2>
                                 <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ backgroundColor: '#18181b', padding: '0.5rem', borderRadius: '12px', border: '1px solid #27272a' }}>
+                                    <div style={{ backgroundColor: 'var(--bg-card)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--gray-700)' }}>
                                         <input
                                             type="text"
                                             placeholder="Project Name (Optional)"
                                             value={projectName}
                                             onChange={(e) => setProjectName(e.target.value)}
-                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none' }}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'var(--gray-100)', outline: 'none' }}
                                         />
                                     </div>
-                                    <div style={{ backgroundColor: '#18181b', padding: '0.5rem', borderRadius: '12px', border: '1px solid #27272a' }}>
+                                    <div style={{ backgroundColor: 'var(--bg-card)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--gray-700)' }}>
                                         <input
                                             type="url"
                                             placeholder="Documentation URL (e.g. https://api.docs.com)"
                                             value={url}
-                                            onChange={(e) => setUrl(e.target.value)}
+                                            onChange={(e) => { setUrl(e.target.value); setError(null); }}
                                             required
-                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none' }}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'var(--gray-100)', outline: 'none' }}
                                         />
                                     </div>
+                                    {error && (
+                                        <div style={{ color: 'var(--error)', fontSize: '0.875rem', marginTop: '-0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <X size={14} /> {error}
+                                        </div>
+                                    )}
                                     <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', height: '48px' }}>
                                         {loading ? <Cpu className="animate-spin" size={18} /> : 'Generate SDK'}
                                     </button>
@@ -244,12 +267,12 @@ export default function Workspace() {
                                         >
                                             Clear
                                         </button>
-                                        <button style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.75rem', cursor: 'pointer' }}>View All</button>
+                                        <button style={{ background: 'none', border: 'none', color: 'var(--primary-500)', fontSize: '0.75rem', cursor: 'pointer' }}>View All</button>
                                     </div>
                                 </h2>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {projects.length === 0 ? (
-                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3f3f46', fontSize: '0.9rem' }}>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-500)', fontSize: '0.9rem' }}>
                                             No projects found. Create one.
                                         </div>
                                     ) : (
@@ -259,20 +282,20 @@ export default function Workspace() {
                                                 onClick={() => selectProject(p)}
                                                 style={{
                                                     display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem', borderRadius: '8px',
-                                                    backgroundColor: '#18181b', border: '1px solid #27272a', color: 'white', textAlign: 'left', cursor: 'pointer'
+                                                    backgroundColor: 'var(--bg-main)', border: '1px solid var(--gray-700)', color: 'var(--gray-100)', textAlign: 'left', cursor: 'pointer'
                                                 }}
                                             >
-                                                <div style={{ width: '32px', height: '32px', borderRadius: '6px', backgroundColor: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <Box size={16} color="#3b82f6" />
+                                                <div style={{ width: '32px', height: '32px', borderRadius: '6px', backgroundColor: 'var(--gray-700)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Box size={16} color="var(--primary-500)" />
                                                 </div>
                                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                                     <p style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.1rem' }}>{p.name}</p>
-                                                    <p style={{ fontSize: '0.7rem', color: '#71717a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.url}</p>
+                                                    <p style={{ fontSize: '0.7rem', color: 'var(--gray-300)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.url}</p>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                                                     <button
                                                         onClick={(e) => handleEditProject(e, p.id)}
-                                                        style={{ background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        style={{ background: 'none', border: 'none', color: 'var(--gray-300)', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                         title="Edit Project"
                                                     >
                                                         <Pencil size={14} />
@@ -299,15 +322,15 @@ export default function Workspace() {
                         {!result ? (
                             <div className="glass-card" style={{ textAlign: 'center', padding: '4rem' }}>
                                 <Globe size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
-                                <h3>No endpoints found</h3>
-                                <p style={{ color: '#71717a' }}>Generate a project first to see discovered endpoints.</p>
+                                <h3 style={{ color: 'var(--gray-100)' }}>No endpoints found</h3>
+                                <p style={{ color: 'var(--gray-300)' }}>Generate a project first to see discovered endpoints.</p>
                             </div>
                         ) : (
                             <div className="glass-card" style={{ padding: '2rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                     <div>
                                         <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Discovered Endpoints</h2>
-                                        <p style={{ color: '#71717a' }}>Found {result.spec.endpoints.length} endpoints for {result.name}</p>
+                                        <p style={{ color: 'var(--gray-500)' }}>Found {result.spec.endpoints.length} endpoints for {result.name}</p>
                                     </div>
                                     <button onClick={() => setActiveTab('playground')} className="btn btn-primary">
                                         Open in Playground
@@ -321,29 +344,30 @@ export default function Workspace() {
                                             alignItems: 'center',
                                             gap: '1.5rem',
                                             padding: '1.25rem',
-                                            backgroundColor: '#18181b',
-                                            border: '1px solid #27272a',
-                                            borderRadius: '12px'
+                                            backgroundColor: 'var(--bg-card)',
+                                            border: '1px solid var(--gray-700)',
+                                            borderRadius: '12px',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                                         }}>
                                             <div style={{
                                                 width: '60px',
                                                 textAlign: 'center',
                                                 fontSize: '0.75rem',
                                                 fontWeight: '900',
-                                                color: ep.method === 'GET' ? '#10b981' : '#3b82f6',
+                                                color: ep.method === 'GET' ? 'var(--success)' : 'var(--primary-500)',
                                                 padding: '0.4rem',
-                                                backgroundColor: ep.method === 'GET' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                                backgroundColor: 'var(--gray-900)',
                                                 borderRadius: '6px'
                                             }}>
                                                 {ep.method}
                                             </div>
                                             <div style={{ flex: 1 }}>
-                                                <p style={{ fontSize: '0.95rem', fontWeight: '600', marginBottom: '0.25rem', fontFamily: 'var(--font-mono)' }}>{ep.path}</p>
-                                                <p style={{ fontSize: '0.85rem', color: '#71717a' }}>{ep.summary || 'No description available'}</p>
+                                                <p style={{ fontSize: '0.95rem', fontWeight: '600', marginBottom: '0.25rem', fontFamily: 'var(--font-mono)', color: 'var(--gray-100)' }}>{ep.path}</p>
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>{ep.summary || 'No description available'}</p>
                                             </div>
                                             <button
                                                 onClick={() => { setSelectedEndpoint(ep); setActiveTab('playground'); }}
-                                                style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.875rem', cursor: 'pointer', fontWeight: '500' }}
+                                                style={{ background: 'none', border: 'none', color: 'var(--primary-600)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: '600' }}
                                             >
                                                 Test →
                                             </button>
@@ -360,29 +384,29 @@ export default function Workspace() {
                         {!result ? (
                             <div style={{ textAlign: 'center', padding: '4rem' }}>
                                 <h3>No results yet.</h3>
-                                <p style={{ color: '#71717a' }}>Go to Overview to generate your first SDK.</p>
+                                <p style={{ color: 'var(--gray-500)' }}>Go to Overview to generate your first SDK.</p>
                                 <button className="btn btn-outline" style={{ marginTop: '1rem' }} onClick={() => setActiveTab('overview')}>Back to Overview</button>
                             </div>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) 1fr', gap: '1.5rem' }}>
                                 {/* SDK Code */}
                                 <div className="glass-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #27272a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--gray-700)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <Code size={18} color="#3b82f6" />
-                                            <span style={{ fontWeight: '600' }}>Python Client SDK</span>
+                                            <Code size={18} color="var(--primary-500)" />
+                                            <span style={{ fontWeight: '600', color: 'var(--gray-100)' }}>Python Client SDK</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <button onClick={() => downloadFile(result.sdk_code, `${result.name.replace(/\s+/g, '_')}_sdk.py`, 'text/x-python')} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                 <Download size={16} /> Download
                                             </button>
                                             <button onClick={() => copyToClipboard(result.sdk_code)} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                {copied ? <Check size={16} color="#10b981" /> : <><Copy size={16} /> Copy Code</>}
+                                                {copied ? <Check size={16} color="var(--success)" /> : <><Copy size={16} /> Copy Code</>}
                                             </button>
                                         </div>
                                     </div>
                                     <div style={{ flex: 1, maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
-                                        <pre style={{ margin: 0, padding: '1.5rem', backgroundColor: '#09090b', color: '#e5e7eb', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                                        <pre style={{ margin: 0, padding: '1.5rem', backgroundColor: 'var(--bg-main)', color: 'var(--gray-100)', fontSize: '0.85rem', lineHeight: '1.6' }}>
                                             {result.sdk_code}
                                         </pre>
                                     </div>
@@ -390,10 +414,10 @@ export default function Workspace() {
 
                                 {/* Spec JSON */}
                                 <div className="glass-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #27272a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--gray-700)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <Globe size={18} color="#8b5cf6" />
-                                            <span style={{ fontWeight: '600' }}>Extracted Spec</span>
+                                            <Globe size={18} color="var(--accent-purple)" />
+                                            <span style={{ fontWeight: '600', color: 'var(--gray-100)' }}>Extracted Spec</span>
                                         </div>
                                         <button
                                             onClick={() => downloadFile(JSON.stringify(result.spec, null, 2), `${result.name.replace(/\s+/g, '_')}_spec.json`, 'application/json')}
@@ -405,7 +429,7 @@ export default function Workspace() {
 
                                     </div>
                                     <div style={{ flex: 1, maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
-                                        <pre style={{ margin: 0, padding: '1.5rem', backgroundColor: '#09090b', color: '#a1a1aa', fontSize: '0.8rem' }}>
+                                        <pre style={{ margin: 0, padding: '1.5rem', backgroundColor: 'var(--bg-main)', color: 'var(--gray-300)', fontSize: '0.8rem' }}>
                                             {JSON.stringify(result.spec, null, 2)}
                                         </pre>
                                     </div>
@@ -435,12 +459,12 @@ export default function Workspace() {
                                                 onClick={() => { setSelectedEndpoint(ep); setPParams({}); setPResponse(null); }}
                                                 style={{
                                                     display: 'flex', flexWrap: 'wrap', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px',
-                                                    border: selectedEndpoint === ep ? '1px solid #3b82f6' : '1px solid transparent',
-                                                    backgroundColor: selectedEndpoint === ep ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                                    color: selectedEndpoint === ep ? 'white' : '#a1a1aa', textAlign: 'left', cursor: 'pointer'
+                                                    border: selectedEndpoint === ep ? '1px solid var(--primary-500)' : '1px solid transparent',
+                                                    backgroundColor: selectedEndpoint === ep ? 'var(--gray-700)' : 'transparent',
+                                                    color: selectedEndpoint === ep ? 'var(--gray-100)' : 'var(--gray-300)', textAlign: 'left', cursor: 'pointer'
                                                 }}
                                             >
-                                                <span style={{ fontSize: '0.6rem', fontWeight: '800', width: '36px', color: ep.method === 'GET' ? '#10b981' : '#3b82f6' }}>{ep.method}</span>
+                                                <span style={{ fontSize: '0.6rem', fontWeight: '800', width: '36px', color: ep.method === 'GET' ? 'var(--success)' : 'var(--primary-500)' }}>{ep.method}</span>
                                                 <span style={{ fontSize: '0.8rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{ep.path}</span>
                                             </button>
                                         ))}
@@ -450,30 +474,30 @@ export default function Workspace() {
                                 {/* Request Editor */}
                                 <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem' }}>
-                                        <div style={{ backgroundColor: '#18181b', border: '1px solid #27272a', padding: '0.75rem 1rem', borderRadius: '8px', color: '#3b82f6', fontWeight: '800', fontSize: '0.8rem' }}>{selectedEndpoint?.method || 'GET'}</div>
-                                        <input readOnly value={selectedEndpoint?.path || ''} style={{ flex: 1, backgroundColor: '#18181b', border: '1px solid #27272a', padding: '0.75rem 1rem', borderRadius: '8px', color: 'white', fontSize: '0.875rem' }} />
+                                        <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--gray-700)', padding: '0.75rem 1rem', borderRadius: '8px', color: 'var(--primary-700)', fontWeight: '800', fontSize: '0.8rem' }}>{selectedEndpoint?.method || 'GET'}</div>
+                                        <input readOnly value={selectedEndpoint?.path || ''} style={{ flex: 1, backgroundColor: 'var(--bg-card)', border: '1px solid var(--gray-700)', padding: '0.75rem 1rem', borderRadius: '8px', color: 'var(--gray-100)', fontSize: '0.875rem' }} />
                                         <button onClick={handleExecute} disabled={pLoading} className="btn btn-primary" style={{ padding: '0 1.5rem' }}>
                                             {pLoading ? '...' : <><Zap size={16} /> Send</>}
                                         </button>
                                     </div>
 
                                     <div style={{ flex: 1, overflowY: 'auto' }}>
-                                        <h3 style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: '#e5e7eb' }}>Parameters</h3>
+                                        <h3 style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: 'var(--gray-100)' }}>Parameters</h3>
 
                                         {/* Dynamic Parameters from Spec */}
                                         {selectedEndpoint?.parameters && Object.entries(selectedEndpoint.parameters).map(([type, list]: [string, any]) => (
                                             list.length > 0 && (
                                                 <div key={type} style={{ marginBottom: '1.5rem' }}>
-                                                    <p style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{type} params</p>
+                                                    <p style={{ fontSize: '0.7rem', color: 'var(--gray-500)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>{type} params</p>
                                                     {list.map((p: any) => (
                                                         <div key={p.name} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '1rem', marginBottom: '0.75rem', alignItems: 'center' }}>
-                                                            <label style={{ fontSize: '0.8rem', color: '#a1a1aa' }}>{p.name}{p.required ? '*' : ''}</label>
+                                                            <label style={{ fontSize: '0.8rem', color: 'var(--gray-300)' }}>{p.name}{p.required ? '*' : ''}</label>
                                                             <input
                                                                 type="text"
                                                                 placeholder={p.type || 'string'}
                                                                 value={pParams[p.name] || ''}
                                                                 onChange={(e) => handleParamChange(p.name, e.target.value)}
-                                                                style={{ padding: '0.5rem', backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '4px', color: 'white', fontSize: '0.8rem' }}
+                                                                style={{ padding: '0.5rem', backgroundColor: 'var(--bg-card)', border: '1px solid var(--gray-700)', borderRadius: '4px', color: 'var(--gray-100)', fontSize: '0.8rem' }}
                                                             />
                                                         </div>
                                                     ))}
@@ -489,7 +513,7 @@ export default function Workspace() {
                                                     value={pBody}
                                                     onChange={(e) => setPBody(e.target.value)}
                                                     placeholder='{"key": "value"}'
-                                                    style={{ width: '100%', height: '120px', backgroundColor: '#09090b', color: 'white', border: '1px solid #27272a', padding: '0.75rem', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                                                    style={{ width: '100%', height: '120px', backgroundColor: 'var(--bg-card)', color: 'var(--gray-100)', border: '1px solid var(--gray-700)', padding: '0.75rem', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
                                                 />
                                             </div>
                                         )}
@@ -498,10 +522,10 @@ export default function Workspace() {
 
                                 {/* Response Viewer */}
                                 <div className="glass-card" style={{ padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #27272a', color: '#71717a', fontSize: '0.8rem' }}>Response</div>
-                                    <div style={{ flex: 1, padding: '1rem', backgroundColor: '#09090b', overflow: 'auto' }}>
+                                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--gray-700)', color: 'var(--gray-500)', fontSize: '0.8rem' }}>Response</div>
+                                    <div style={{ flex: 1, padding: '1rem', backgroundColor: 'var(--bg-main)', overflow: 'auto' }}>
                                         {pResponse ? (
-                                            <pre style={{ margin: 0, fontSize: '0.8rem', color: pResponse.error ? '#ef4444' : '#10b981' }}>
+                                            <pre style={{ margin: 0, fontSize: '0.8rem', color: pResponse.error ? 'var(--error)' : 'var(--success)' }}>
                                                 {JSON.stringify(pResponse, null, 2)}
                                             </pre>
                                         ) : (
@@ -522,37 +546,37 @@ export default function Workspace() {
                 {isCreateModalOpen && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="glass-card" style={{ width: '100%', maxWidth: '480px', padding: '2.5rem', position: 'relative' }}>
-                            <button onClick={() => setIsCreateModalOpen(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'none', border: 'none', color: '#71717a', cursor: 'pointer' }}>
+                            <button onClick={() => setIsCreateModalOpen(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'none', border: 'none', color: 'var(--gray-500)', cursor: 'pointer' }}>
                                 <X size={20} />
                             </button>
 
-                            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Create New Project</h2>
-                            <p style={{ color: '#71717a', marginBottom: '2rem', fontSize: '0.9rem' }}>Enter the details below to generate a new SDK.</p>
+                            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--gray-100)' }}>Create New Project</h2>
+                            <p style={{ color: 'var(--gray-300)', marginBottom: '2rem', fontSize: '0.9rem' }}>Enter the details below to generate a new SDK.</p>
 
                             <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: '500' }}>PROJECT NAME</label>
-                                    <div style={{ backgroundColor: '#18181b', padding: '0.25rem', borderRadius: '10px', border: '1px solid #27272a' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--gray-300)', fontWeight: '500' }}>PROJECT NAME</label>
+                                    <div style={{ backgroundColor: 'var(--bg-card)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--gray-700)' }}>
                                         <input
                                             type="text"
                                             placeholder="e.g. Stripe Payment API"
                                             value={projectName}
                                             onChange={(e) => setProjectName(e.target.value)}
-                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'var(--gray-100)', outline: 'none', fontSize: '0.9rem' }}
                                         />
                                     </div>
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: '500' }}>DOCUMENTATION URL</label>
-                                    <div style={{ backgroundColor: '#18181b', padding: '0.25rem', borderRadius: '10px', border: '1px solid #27272a' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--gray-300)', fontWeight: '500' }}>DOCUMENTATION URL</label>
+                                    <div style={{ backgroundColor: 'var(--bg-card)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--gray-700)' }}>
                                         <input
                                             type="url"
                                             placeholder="https://api.example.com/docs"
                                             value={url}
                                             onChange={(e) => setUrl(e.target.value)}
                                             required
-                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'var(--gray-100)', outline: 'none', fontSize: '0.9rem' }}
                                         />
                                     </div>
                                 </div>
@@ -576,36 +600,36 @@ export default function Workspace() {
                 {isEditModalOpen && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="glass-card" style={{ width: '100%', maxWidth: '480px', padding: '2.5rem', position: 'relative' }}>
-                            <button onClick={() => setIsEditModalOpen(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'none', border: 'none', color: '#71717a', cursor: 'pointer' }}>
+                            <button onClick={() => setIsEditModalOpen(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'none', border: 'none', color: 'var(--gray-500)', cursor: 'pointer' }}>
                                 <X size={20} />
                             </button>
 
-                            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Edit Project</h2>
-                            <p style={{ color: '#71717a', marginBottom: '2rem', fontSize: '0.9rem' }}>Modify the project details below.</p>
+                            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--gray-100)' }}>Edit Project</h2>
+                            <p style={{ color: 'var(--gray-300)', marginBottom: '2rem', fontSize: '0.9rem' }}>Modify the project details below.</p>
 
                             <form onSubmit={handleUpdateProject} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: '500' }}>PROJECT NAME</label>
-                                    <div style={{ backgroundColor: '#18181b', padding: '0.25rem', borderRadius: '10px', border: '1px solid #27272a' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--gray-300)', fontWeight: '500' }}>PROJECT NAME</label>
+                                    <div style={{ backgroundColor: 'var(--bg-card)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--gray-700)' }}>
                                         <input
                                             type="text"
                                             value={editName}
                                             onChange={(e) => setEditName(e.target.value)}
                                             required
-                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'var(--gray-100)', outline: 'none', fontSize: '0.9rem' }}
                                         />
                                     </div>
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: '500' }}>DOCUMENTATION URL</label>
-                                    <div style={{ backgroundColor: '#18181b', padding: '0.25rem', borderRadius: '10px', border: '1px solid #27272a' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--gray-300)', fontWeight: '500' }}>DOCUMENTATION URL</label>
+                                    <div style={{ backgroundColor: 'var(--bg-card)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--gray-700)' }}>
                                         <input
                                             type="url"
                                             value={editUrl}
                                             onChange={(e) => setEditUrl(e.target.value)}
                                             required
-                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.9rem' }}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'transparent', border: 'none', color: 'var(--gray-100)', outline: 'none', fontSize: '0.9rem' }}
                                         />
                                     </div>
                                 </div>

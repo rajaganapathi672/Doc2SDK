@@ -1,6 +1,6 @@
 import json
 import yaml
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 
 class APIEndpointSchema(BaseModel):
@@ -9,7 +9,7 @@ class APIEndpointSchema(BaseModel):
     summary: str = ""
     description: str = ""
     parameters: Dict[str, Any] = {}
-    request_body: Dict[str, Any] = {}
+    request_body: Optional[Dict[str, Any]] = None
     responses: Dict[str, Any] = {}
     tags: List[str] = []
 

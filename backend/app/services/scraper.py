@@ -28,37 +28,48 @@ class ScraperService:
         # Extract text and code blocks
         # We want to preserve structure roughly
         text_content = []
-        # Include more tags that might contain documentation components
-        target_tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'p', 'li', 'pre', 'code', 'table', 'tr', 'td', 'span', 'div']
         
-        for tag in soup.find_all(target_tags):
-            # For div and span, only include if they have text and aren't too deep/nested
-            if tag.name in ['div', 'span'] and (len(tag.get_text(strip=True)) > 200 or len(tag.find_all(recursive=False)) > 5):
-                continue
-                
-            text = tag.get_text().strip()
-            if not text:
-                continue
+        # Helper to process a node
+        def process_node(node):
+            if node.name in ['script', 'style', 'nav', 'footer', 'aside', 'header', 'iframe', 'svg']:
+                return ""
+            
+            text = ""
+            if node.name in ['h1', 'h2', 'h3', 'h4']:
+                text = f"\n\n### {node.get_text().strip()} ###\n"
+            elif node.name in ['pre', 'code']:
+                text = f"\n```\n{node.get_text().strip()}\n```\n"
+            elif node.name == 'table':
+                # Attempt to format table as text
+                rows = []
+                for tr in node.find_all('tr'):
+                    cells = [td.get_text().strip() for td in tr.find_all(['td', 'th'])]
+                    rows.append(" | ".join(cells))
+                text = "\n" + "\n".join(rows) + "\n"
+            elif node.name in ['p', 'li', 'div', 'span']:
+                 # Only add meaningful text
+                 t = node.get_text().strip()
+                 if len(t) > 2: # Reduce noise
+                    text = f"{t}\n"
+            
+            return text
 
-            if tag.name in ['h1', 'h2', 'h3', 'h4', 'h5']:
-                text_content.append(f"\n{text}\n" + "="*len(text))
-            elif tag.name in ['pre', 'code']:
-                # Detect if it looks like an endpoint (e.g. "GET /v1/...")
-                if re.match(r'^(GET|POST|PUT|DELETE|PATCH)\s+/', text):
-                    text_content.append(f"\nENDPOINT_CANDIDATE: {text}\n")
-                else:
-                    text_content.append(f"\nCODE_BLOCK:\n{text}\n")
-            elif tag.name == 'tr':
-                # Table rows often contain parameter descriptions
-                cells = [c.get_text(strip=True) for c in tag.find_all(['td', 'th'])]
-                if cells:
-                    text_content.append(f" | ".join(cells))
-            else:
-                text_content.append(text)
+        # Instead of finding specific tags, iterate over main content areas or just body
+        # But to keep it simple and robust, let's target the likely content containers
+        # If we can't find a main container, we fallback to body
+        content_root = soup.find('main') or soup.find('article') or soup.find('body')
+        
+        if content_root:
+            # Get text with separator to preserve some layout
+            # separator=" " might merge too much, so we stick to our manual iteration or use get_text
+            cleaned_text = content_root.get_text(separator="\n", strip=True)
+        else:
+             # Fallback
+             cleaned_text = soup.get_text(separator="\n", strip=True)
 
-        cleaned_text = "\n".join(text_content)
-        # remove excessive newlines and whitespace
+        # Post-processing to remove excessive whitespace
         cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
-        cleaned_text = re.sub(r' +', ' ', cleaned_text)
+        # remove excessive newlines
+        cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
         
-        return cleaned_text[:12000] # Slightly increased cap
+        return cleaned_text[:50000] # Cap to 50k chars (Balance between depth and speed)

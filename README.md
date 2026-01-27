@@ -14,7 +14,7 @@ Doc2SDK is an intelligent API integration platform that automatically extracts A
 
 - **Backend**: FastAPI (Python), SQLAlchemy, PostgreSQL, Redis, Celery.
 - **Frontend**: React (Vite), TypeScript, Framer Motion, Lucide Icons.
-- **AI**: Integration with OpenAI/Anthropic/DeepSeek for intelligent code enhancement.
+- **AI**: Integrates **Google Gemini 2.0/1.5** for intelligent parsing and API specification extraction.
 
 ## 🏁 Getting Started
 
@@ -23,6 +23,7 @@ Doc2SDK is an intelligent API integration platform that automatically extracts A
 ```bash
 docker-compose up --build
 ```
+*Frontend runs on `http://localhost:5173` | Backend on `http://localhost:8000`*
 
 ### Manual Setup
 
@@ -40,6 +41,7 @@ docker-compose up --build
    cd frontend
    npm install
    npm run dev
+   # Runs on http://localhost:5173
    ```
 
 ## 📂 Project Structure

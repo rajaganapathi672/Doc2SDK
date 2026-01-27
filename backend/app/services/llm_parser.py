@@ -44,12 +44,6 @@ class LLMParserService:
         if not self.model:
             self._initialize_model()
 
-        print(f"DEBUG: Parsing text (length: {len(cleaned_text)})")
-        if len(cleaned_text) < 100:
-             print(f"DEBUG: Text content: {cleaned_text}")
-        else:
-             print(f"DEBUG: Text preview: {cleaned_text[:200]}...")
-
         # 1. Spec-First Bypass: If scraper found a raw JSON spec, parse it directly
         if "RAW_SPEC_JSON:" in cleaned_text:
             try:
@@ -96,39 +90,42 @@ class LLMParserService:
 
         # 2. LLM Parsing with Gemini
         prompt = f"""
-        You are an expert API architect. Extract the API structure from the provided text and return a STRICT JSON object.
+        You are an expert API architect. Your goal is to extract a structured API specification from the provided documentation text.
         
-        CRITICAL INSTRUCTIONS:
-        1. All descriptive strings (name, summary, description, parameter names, etc.) MUST be translated to English if they are in another language.
-        2. The 'endpoints' array must ONLY contain actual API endpoints (HTTP method + path).
-        3. Do NOT include documentation sections, categories, or non-functional items in the 'endpoints' array.
-        4. If the documentation lists categories (e.g., "Actions", "Queries"), treat those as context for the endpoints within them, but do not make the category itself an endpoint.
+        INSTRUCTIONS:
+        1. Extract all API endpoints, methods (GET, POST, etc.), paths, and parameters.
+        2. If a method is not explicitly stated, INFER it from the context (e.g., "submit form" -> POST, "retrieve" -> GET).
+        3. If parameters are described in text, extract them into the JSON structure.
+        4. Translating non-English descriptions to English is REQUIRED.
+        5. Return a STRICT JSON object matching the structure below. Do not add markdown formatting if possible.
+        6. If the text seems to be a raw JSON spec, parse it accordingly.
 
         API Documentation Text:
         {cleaned_text}
 
-        Return a JSON object with this EXACT structure:
+        REQUIRED JSON OUTPUT STRUCTURE:
         {{
-            "name": "API Name",
+            "name": "inferred or explicit API Name",
             "version": "1.0.0",
-            "base_url": "https://api.example.com/v1",
-            "description": "Short description",
+            "base_url": "https://api.example.com/v1 (infer from docs or use placeholder)",
+            "description": "Short description of the API",
             "authentication": {{
                 "type": "bearer" or "apiKey" or "none",
-                "name": "Header/Param name if apiKey",
+                "name": "api_key (if known)",
                 "in": "header" or "query"
             }},
             "endpoints": [
                 {{
                     "method": "GET",
                     "path": "/resource/{{id}}",
-                    "summary": "Summary of the endpoint",
+                    "summary": "Short summary of action",
                     "parameters": {{
                         "path": [{{ "name": "id", "type": "string", "required": true }}],
                         "query": [],
-                        "header": []
+                        "header": [],
+                        "body": [] 
                     }},
-                    "request_body": {{}},
+                    "request_body": {{ "key": "value (example)" }},
                     "responses": {{ "200": {{ "description": "Success" }} }}
                 }}
             ]
@@ -144,20 +141,30 @@ class LLMParserService:
                 generation_config={"response_mime_type": "application/json"},
             )
             
-            spec_json = json.loads(response.text)
-            
-            # Post-processing: Filter malformed endpoints that might trigger Pydantic validation errors
-            if "endpoints" in spec_json and isinstance(spec_json["endpoints"], list):
-                valid_endpoints = []
-                for ep in spec_json["endpoints"]:
-                    if isinstance(ep, dict) and ep.get("method") and ep.get("path"):
-                        # Ensure method is uppercase
-                        ep["method"] = ep["method"].upper()
-                        valid_endpoints.append(ep)
-                spec_json["endpoints"] = valid_endpoints
+            raw_text = response.text
+            # Clean up markdown code blocks if present
+            if "```json" in raw_text:
+                raw_text = raw_text.replace("```json", "").replace("```", "")
+            elif "```" in raw_text:
+                 raw_text = raw_text.replace("```", "")
 
+            try:
+                spec_json = json.loads(raw_text.strip())
+            except json.JSONDecodeError:
+                # Fallback: Use json_repair
+                import json_repair
+                spec_json = json_repair.loads(raw_text.strip())
+                
             return {**spec_json, "source": f"gemini_{self.model_name.split('/')[-1]}", "is_mock": False}
         except Exception as e:
             print(f"DEBUG: Gemini parsing failed ({str(e)})")
+            # Final Fallback: try to repair whatever text we have
+            try:
+                import json_repair
+                spec_json = json_repair.loads(response.text)
+                if spec_json:
+                    return {**spec_json, "source": f"gemini_{self.model_name.split('/')[-1]}", "is_mock": False}
+            except:
+                pass
             raise Exception(f"AI Generation failed: {str(e)}")
 

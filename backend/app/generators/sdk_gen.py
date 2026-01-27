@@ -62,9 +62,11 @@ class {{ name.replace(' ', '') }}Client:
     {% for endpoint in endpoints %}
     def {{ endpoint.summary.lower().replace(' ', '_') if endpoint.summary else endpoint.method.lower() + endpoint.path.replace('/', '_').replace('{', '').replace('}', '') }}(
         self,
+        {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
         {{ p.name }}: {{ p.type }},
         {% endfor %}
+        {% endif %}
         **kwargs
     ) -> Dict[str, Any]:
         \"\"\"
@@ -72,9 +74,11 @@ class {{ name.replace(' ', '') }}Client:
         {{ endpoint.description }}
         \"\"\"
         path = f"{{ endpoint.path }}"
+        {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
         path = path.replace("{{ '{' + p.name + '}' }}", str({{ p.name }}))
         {% endfor %}
+        {% endif %}
         
         try:
             response = self.client.request(
@@ -166,16 +170,20 @@ export class {{ name.replace(' ', '') }}Client {
      * {{ endpoint.description }}
      */
     async {{ (endpoint.summary.charAt(0).toLowerCase() + endpoint.summary.slice(1)).replace(' ', '') if endpoint.summary else endpoint.method.toLowerCase() + endpoint.path.replace('/', '_').replace('{', '').replace('}', '') }}(
+        {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
         {{ p.name }}: any,
         {% endfor %}
+        {% endif %}
         data?: any,
         params?: any
     ): Promise<any> {
         let path = `{{ endpoint.path }}`;
+        {% if endpoint.parameters and endpoint.parameters.path %}
         {% for p in endpoint.parameters.path %}
         path = path.replace("{{ '{' + p.name + '}' }}", String({{ p.name }}));
         {% endfor %}
+        {% endif %}
 
         try {
             const response = await this.client.request({
