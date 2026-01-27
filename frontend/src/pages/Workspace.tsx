@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Code, Globe, Terminal, Cpu, Zap, Copy, Check, Box, FileCode, Activity, Share2, Download, X, Pencil } from 'lucide-react';
+import { Code, Globe, Terminal, Cpu, Zap, Copy, Check, Box, FileCode, Activity, Share2, Download, X, Pencil, Trash2 } from 'lucide-react';
 import { mvpApi } from '../api';
 import Layout from '../components/Layout';
 
@@ -67,23 +67,40 @@ export default function Workspace() {
         setIsCreateModalOpen(true);
     };
 
-    const handleRenameProject = (e: React.MouseEvent, projectId: number) => {
+    const handleEditProject = (e: React.MouseEvent, projectId: number) => {
         e.stopPropagation();
         const project = projects.find(p => p.id === projectId);
         if (!project) return;
 
-        const newName = prompt("Enter new project name:", project.name);
-        if (newName && newName.trim() !== "") {
-            const updatedProjects = projects.map(p =>
-                p.id === projectId ? { ...p, name: newName.trim() } : p
-            );
-            setProjects(updatedProjects);
-            localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+        const newName = prompt("Edit project name:", project.name);
+        if (newName === null) return; // User cancelled
 
-            // If the active result is this project, update it too
-            if (result && result.id === projectId) {
-                setResult({ ...result, name: newName.trim() });
-            }
+        const newUrl = prompt("Edit documentation URL:", project.url);
+        if (newUrl === null) return; // User cancelled
+
+        const updatedProjects = projects.map(p =>
+            p.id === projectId ? { ...p, name: newName.trim() || p.name, url: newUrl.trim() || p.url } : p
+        );
+        setProjects(updatedProjects);
+        localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+
+        // If the active result is this project, update it too
+        if (result && result.id === projectId) {
+            setResult({ ...result, name: newName.trim() || result.name });
+        }
+    };
+
+    const handleDeleteProject = (e: React.MouseEvent, projectId: number) => {
+        e.stopPropagation();
+        if (!confirm("Are you sure you want to delete this project?")) return;
+
+        const updatedProjects = projects.filter(p => p.id !== projectId);
+        setProjects(updatedProjects);
+        localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+
+        // If the deleted project was active, clear the result
+        if (result && result.id === projectId) {
+            setResult(null);
         }
     };
 
@@ -237,13 +254,22 @@ export default function Workspace() {
                                                     <p style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.1rem' }}>{p.name}</p>
                                                     <p style={{ fontSize: '0.7rem', color: '#71717a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.url}</p>
                                                 </div>
-                                                <button
-                                                    onClick={(e) => handleRenameProject(e, p.id)}
-                                                    style={{ background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                    title="Rename Project"
-                                                >
-                                                    <Pencil size={14} />
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                    <button
+                                                        onClick={(e) => handleEditProject(e, p.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        title="Edit Project"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDeleteProject(e, p.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        title="Delete Project"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                             </button>
                                         ))
                                     )}
