@@ -5,16 +5,15 @@ services:
     env: python
     region: ohio
     plan: free
-    # Updated: use python -m pip and python -m gunicorn for better reliability
-    buildCommand: cd backend && python -m pip install --upgrade pip && pip install -r requirements.txt && pip install uvicorn gunicorn json_repair
-    startCommand: cd backend && python -m gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
+    buildCommand: cd backend && pip install -r requirements.txt && pip install uvicorn gunicorn json_repair
+    startCommand: cd backend && gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: GEMINI_API_KEY
         sync: false
       - key: ALLOWED_ORIGINS
-        value: "*" # Or set to frontend URL after deploy
+        value: "*"
 
   # Frontend: React Static Site
   - type: web

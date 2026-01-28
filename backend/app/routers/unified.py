@@ -4,7 +4,7 @@ from ..services.scraper import ScraperService
 from ..services.llm_parser import LLMParserService
 from ..services.translator import TranslationService
 from ..generators.sdk_gen import CodeGenerator
-from ..parsers.openapi import NormalizedAPISpec
+from ..parsers.openapi import NormalizedAPISpec, OpenAPIParser
 import httpx
 from typing import Any
 
@@ -19,12 +19,25 @@ async def generate_sdk(request: schemas.GenerateRequest):
         # 1. Scrape
         cleaned_text = await ScraperService.scrape(request.source_url)
         
-        # 2. Parse with LLM
-        spec_dict = await parser_service.parse_docs(cleaned_text)
+        spec_dict = {}
+        spec = None
         
-        # 3. Normalize for generator
-        # The LLM output is designed to match NormalizedAPISpec
-        spec = NormalizedAPISpec(**spec_dict)
+        # 2. Parse
+        if cleaned_text.startswith("RAW_SPEC_JSON:"):
+            # Use deterministic parser for raw specs
+            raw_content = cleaned_text.replace("RAW_SPEC_JSON:\n", "", 1)
+            parser = OpenAPIParser()
+            # This returns a NormalizedAPISpec object directly
+            spec = parser.parse(raw_content)
+            # Add metadata
+            spec_dict = spec.dict()
+            spec_dict["source"] = "direct_openapi_parser"
+            spec_dict["is_mock"] = False
+        else:
+            # Use LLM for unstructured text
+            spec_dict = await parser_service.parse_docs(cleaned_text)
+            # Normalize for generator
+            spec = NormalizedAPISpec(**spec_dict)
         
         # 4. Generate Python SDK
         sdk_code = code_generator.generate_python_sdk(spec)
@@ -38,6 +51,9 @@ async def generate_sdk(request: schemas.GenerateRequest):
             source=spec_dict.get("source")
         )
     except Exception as e:
+        print(f"Error during generation: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/playground/execute", response_model=schemas.ExecuteResponse)

@@ -3,17 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Code, Globe, Terminal, Cpu, Zap, Copy, Check, Box, FileCode, Activity, Share2, Download, X, Pencil, Trash2 } from 'lucide-react';
 import { mvpApi } from '../api';
 import Layout from '../components/Layout';
+import { SafeStorage } from '../utils/storage';
 
 export default function Workspace() {
     const [url, setUrl] = useState('');
     const [loading, setLoading] = useState(false);
     const [projects, setProjects] = useState<any[]>(() => {
-        const saved = localStorage.getItem('ag_projects');
-        return saved ? JSON.parse(saved) : [];
+        return SafeStorage.getItem('ag_projects', []);
     });
     const [apiCalls, setApiCalls] = useState<number>(() => {
-        const saved = localStorage.getItem('ag_api_calls');
-        return saved ? parseInt(saved, 10) : 0;
+        return SafeStorage.getItem('ag_api_calls', 0);
     });
     const [result, setResult] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'endpoints' | 'playground' | 'results'>('overview');
@@ -50,10 +49,6 @@ export default function Workspace() {
             // Use user-provided name if available, otherwise fallback to API name
             const projectDisplayName = projectName || data.name;
             const newProject = { ...data, name: projectDisplayName, id: Date.now(), url };
-            const updatedProjects = [newProject, ...projects];
-
-            setProjects(updatedProjects);
-            localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
 
             setResult(newProject);
             setActiveTab('results');
@@ -63,6 +58,16 @@ export default function Workspace() {
             setError(null);
             if (data.spec.endpoints && data.spec.endpoints.length > 0) {
                 setSelectedEndpoint(data.spec.endpoints[0]);
+            }
+
+            // Safe Storage Logic: Use SafeStorage utility
+            const updatedProjects = [newProject, ...projects];
+            const success = SafeStorage.setItem('ag_projects', updatedProjects);
+            if (success) {
+                setProjects(SafeStorage.getItem('ag_projects', updatedProjects)); // Refresh state from storage to reflect truncation
+            } else {
+                console.error("Critical storage failure");
+                setError("Your browser storage is full. Please delete some projects.");
             }
         } catch (error: any) {
             console.error("Generation failed:", error);
@@ -102,7 +107,7 @@ export default function Workspace() {
             p.id === editingId ? { ...p, name: editName.trim(), url: editUrl.trim() } : p
         );
         setProjects(updatedProjects);
-        localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+        SafeStorage.setItem('ag_projects', updatedProjects);
 
         if (result && result.id === editingId) {
             setResult({ ...result, name: editName.trim(), url: editUrl.trim() });
@@ -116,7 +121,7 @@ export default function Workspace() {
 
         const updatedProjects = projects.filter(p => p.id !== projectId);
         setProjects(updatedProjects);
-        localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+        SafeStorage.setItem('ag_projects', updatedProjects);
 
         if (result && result.id === projectId) {
             setResult(null);
@@ -151,12 +156,12 @@ export default function Workspace() {
             // Update project in list
             const updatedProjects = projects.map(p => p.id === result.id ? updatedResult : p);
             setProjects(updatedProjects);
-            localStorage.setItem('ag_projects', JSON.stringify(updatedProjects));
+            SafeStorage.setItem('ag_projects', updatedProjects);
 
-            // Increment global count (optional, but keeps existing state valid)
+            // Increment global count
             const newCount = apiCalls + 1;
             setApiCalls(newCount);
-            localStorage.setItem('ag_api_calls', newCount.toString());
+            SafeStorage.setItem('ag_api_calls', newCount);
         } catch (error: any) {
             setPResponse({ error: error.message || "Execution failed" });
         } finally {
@@ -262,10 +267,10 @@ export default function Workspace() {
                                     Recent Projects
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <button
-                                            onClick={() => { localStorage.removeItem('ag_projects'); setProjects([]); }}
+                                            onClick={() => { SafeStorage.clearProjects(); setProjects([]); }}
                                             style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer' }}
                                         >
-                                            Clear
+                                            Clear All
                                         </button>
                                         <button style={{ background: 'none', border: 'none', color: 'var(--primary-500)', fontSize: '0.75rem', cursor: 'pointer' }}>View All</button>
                                     </div>
@@ -430,7 +435,9 @@ export default function Workspace() {
                                     </div>
                                     <div style={{ flex: 1, maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
                                         <pre style={{ margin: 0, padding: '1.5rem', backgroundColor: 'var(--bg-main)', color: 'var(--gray-300)', fontSize: '0.8rem' }}>
-                                            {JSON.stringify(result.spec, null, 2)}
+                                            {JSON.stringify(result.spec, null, 2).length > 50000
+                                                ? JSON.stringify(result.spec, null, 2).substring(0, 50000) + "\n... (Content truncated for display. Download to view full file)"
+                                                : JSON.stringify(result.spec, null, 2)}
                                         </pre>
                                     </div>
                                 </div>
