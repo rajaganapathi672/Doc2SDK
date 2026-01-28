@@ -2,6 +2,14 @@
 
 Doc2SDK is an intelligent API integration platform that automatically extracts API documentation, understands API behavior, generates production-ready SDK code, creates comprehensive tests, and provides an interactive playground for developers.
 
+## 📺 Demo
+
+https://github.com/rajaganapathi672/Doc2SDK/raw/master/InShot_compressed.mp4
+
+> [!TIP]
+> This video is located at `./InShot_compressed.mp4` in this repository.
+
+
 ## 🚀 Key Features
 
 - **Multi-Source Extraction**: Parse OpenAPI, Swagger, Postman, and more.
