@@ -20,8 +20,8 @@ https://github.com/rajaganapathi672/Doc2SDK/raw/master/InShot_compressed.mp4
 
 ## 🛠️ Technology Stack
 
-- **Backend**: FastAPI (Python), SQLAlchemy, PostgreSQL, Redis, Celery.
-- **Frontend**: React (Vite), TypeScript, Framer Motion, Lucide Icons.
+- **Backend**: FastAPI (Python), SQLAlchemy, Redis.
+- **Frontend**: React (Vite), TypeScript, Framer Motion
 - **AI**: Integrates **Google Gemini 2.0/1.5** for intelligent parsing and API specification extraction.
 
 ## 🏁 Getting Started
